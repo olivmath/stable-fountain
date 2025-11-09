@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
+import { Injectable } from "@nestjs/common";
+import { ConfigService as NestConfigService } from "@nestjs/config";
 
 @Injectable()
 export class ConfigService {
@@ -7,40 +7,40 @@ export class ConfigService {
 
   // ===== Server Configuration =====
   get nodeEnv(): string {
-    return this.configService.getOrThrow<string>('NODE_ENV');
+    return this.configService.getOrThrow<string>("NODE_ENV");
   }
 
   get port(): number {
-    return this.configService.getOrThrow<number>('PORT');
+    return this.configService.getOrThrow<number>("PORT");
   }
 
   get isDevelopment(): boolean {
-    return this.nodeEnv === 'development';
+    return this.nodeEnv === "development";
   }
 
   get isProduction(): boolean {
-    return this.nodeEnv === 'production';
+    return this.nodeEnv === "production";
   }
 
   // ===== Database Configuration =====
   get dbHost(): string {
-    return this.configService.getOrThrow<string>('DB_HOST');
+    return this.configService.getOrThrow<string>("DB_HOST");
   }
 
   get dbPort(): number {
-    return this.configService.getOrThrow<number>('DB_PORT');
+    return this.configService.getOrThrow<number>("DB_PORT");
   }
 
   get dbUsername(): string {
-    return this.configService.getOrThrow<string>('DB_USERNAME');
+    return this.configService.getOrThrow<string>("DB_USERNAME");
   }
 
   get dbPassword(): string {
-    return this.configService.getOrThrow<string>('DB_PASSWORD');
+    return this.configService.getOrThrow<string>("DB_PASSWORD");
   }
 
   get dbName(): string {
-    return this.configService.getOrThrow<string>('DB_NAME');
+    return this.configService.getOrThrow<string>("DB_NAME");
   }
 
   /**
@@ -55,8 +55,8 @@ export class ConfigService {
     const database = this.dbName;
 
     // If host starts with https://, it's likely a Supabase URL without protocol
-    if (host.includes('supabase')) {
-      return `postgresql://${username}:${password}@${host.replace('https://', '')}:${port}/${database}`;
+    if (host.includes("supabase")) {
+      return `postgresql://${username}:${password}@${host.replace("https://", "")}:${port}/${database}`;
     }
 
     return `postgresql://${username}:${password}@${host}:${port}/${database}`;
@@ -64,25 +64,25 @@ export class ConfigService {
 
   // ===== Authentication (JWT) =====
   get jwtSecret(): string {
-    return this.configService.getOrThrow<string>('JWT_SECRET');
+    return this.configService.getOrThrow<string>("JWT_SECRET");
   }
 
   get jwtExpiration(): string {
-    return this.configService.getOrThrow<string>('JWT_EXPIRATION');
+    return this.configService.getOrThrow<string>("JWT_EXPIRATION");
   }
 
   // ===== Queue & Cache (Redis) =====
   get redisUrl(): string {
-    return this.configService.getOrThrow<string>('REDIS_URL');
+    return this.configService.getOrThrow<string>("REDIS_URL");
   }
 
   // ===== Webhooks & Async Processing =====
   get webhookRetryAttempts(): number {
-    return this.configService.getOrThrow<number>('WEBHOOK_RETRY_ATTEMPTS');
+    return this.configService.getOrThrow<number>("WEBHOOK_RETRY_ATTEMPTS");
   }
 
   get webhookRetryDelay(): number {
-    return this.configService.getOrThrow<number>('WEBHOOK_RETRY_DELAY');
+    return this.configService.getOrThrow<number>("WEBHOOK_RETRY_DELAY");
   }
 
   // ===== Collateralization Ratios =====
@@ -90,42 +90,13 @@ export class ConfigService {
    * Minimum collateralization ratio required for new mint operations (150%)
    */
   get collateralRatioMin(): number {
-    return this.configService.getOrThrow<number>('COLLATERAL_RATIO_MIN');
+    return this.configService.getOrThrow<number>("COLLATERAL_RATIO_MIN");
   }
 
   /**
    * Emergency collateralization threshold - critical if below (120%)
    */
   get collateralRatioEmergency(): number {
-    return this.configService.getOrThrow<number>('COLLATERAL_RATIO_EMERGENCY');
-  }
-
-  // ===== Xahau/XRPL Integration =====
-  get xrplNetwork(): string {
-    return this.configService.getOrThrow<string>('XRPL_NETWORK');
-  }
-
-  get xrplWebsocketUrl(): string {
-    return this.configService.getOrThrow<string>('XRPL_WEBSOCKET_URL');
-  }
-
-  get xrplAccount(): string {
-    return this.configService.getOrThrow<string>('XRPL_ACCOUNT');
-  }
-
-  get xrplSecret(): string {
-    return this.configService.getOrThrow<string>('XRPL_SECRET');
-  }
-
-  /**
-   * All XRPL configurations are required, so if they exist, they are always configured
-   */
-  get isXrplConfigured(): boolean {
-    return !!(
-      this.xrplNetwork &&
-      this.xrplWebsocketUrl &&
-      this.xrplAccount &&
-      this.xrplSecret
-    );
+    return this.configService.getOrThrow<number>("COLLATERAL_RATIO_EMERGENCY");
   }
 }

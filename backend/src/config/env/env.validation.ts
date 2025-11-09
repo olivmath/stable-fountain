@@ -97,22 +97,4 @@ export const validationSchema = Joi.object({
     'any.required': 'COLLATERAL_RATIO_EMERGENCY is required. Provide emergency collateralization ratio (e.g., 120 for 120%).',
     'number.base': 'COLLATERAL_RATIO_EMERGENCY must be a number.',
   }),
-
-  // ===== Xahau/XRPL Integration =====
-  XRPL_NETWORK: Joi.string().required().messages({
-    'any.required': 'XRPL_NETWORK is required. Provide XRPL network name (e.g., mainnet, testnet, xahau).',
-    'string.empty': 'XRPL_NETWORK cannot be empty.',
-  }),
-  XRPL_WEBSOCKET_URL: Joi.string().uri().required().messages({
-    'any.required': 'XRPL_WEBSOCKET_URL is required. Provide WebSocket URL for XRPL node.',
-    'string.uri': 'XRPL_WEBSOCKET_URL must be a valid WebSocket URL.',
-  }),
-  XRPL_ACCOUNT: Joi.string().required().messages({
-    'any.required': 'XRPL_ACCOUNT is required. Provide XRPL account address.',
-    'string.empty': 'XRPL_ACCOUNT cannot be empty.',
-  }),
-  XRPL_SECRET: Joi.string().required().messages({
-    'any.required': 'XRPL_SECRET is required. Provide XRPL secret key.',
-    'string.empty': 'XRPL_SECRET cannot be empty.',
-  }),
 }).unknown(true);
