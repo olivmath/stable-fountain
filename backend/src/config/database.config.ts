@@ -1,25 +1,45 @@
 import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { DataSourceOptions } from 'typeorm';
+import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import { ConfigService } from './env/config.service';
 
 // Load environment variables for scripts that run outside NestJS
 dotenv.config();
 
 /**
- * Get database configuration from environment variables
+ * Factory function to create a ConfigService instance for use outside NestJS DI
+ * This ensures consistent configuration validation across all contexts
+ *
+ * Used for scripts that run outside of NestJS dependency injection container
+ */
+function createConfigServiceInstance(): ConfigService {
+  // Create a NestJS ConfigService that reads from process.env
+  // This approach works because dotenv.config() was already called at module load time
+  const nestConfigService = new NestConfigService(process.env);
+  return new ConfigService(nestConfigService);
+}
+
+/**
+ * Get database configuration using ConfigService
  * Used for scripts and configurations that run outside of NestJS DI
+ * Ensures consistency with the main @backend/src/config/env module
  */
 function getEnvDatabaseConfig() {
+  const configService = createConfigServiceInstance();
+
   return {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    username: process.env.DB_USERNAME || 'fountain',
-    password: process.env.DB_PASSWORD || 'fountain_dev_pass',
-    database: process.env.DB_NAME || 'fountain_db',
-    logging: process.env.DB_LOGGING === 'true',
+    host: configService.dbHost,
+    port: configService.dbPort,
+    username: configService.dbUsername,
+    password: configService.dbPassword,
+    database: configService.dbName,
+    logging: configService.isDevelopment,
+    ssl: configService.dbHost.includes('supabase')
+      ? { rejectUnauthorized: false }
+      : (undefined as any),
   };
 }
 
@@ -49,12 +69,14 @@ export const databaseConfig = (
     username: configService.dbUsername,
     password: configService.dbPassword,
     database: configService.dbName,
+    ssl: configService.dbHost.includes('supabase')
+      ? { rejectUnauthorized: false }
+      : (undefined as any),
     entities: [entitiesPath],
     migrations: [migrationsPath],
     migrationsTableName: 'typeorm_migrations',
     synchronize: false,
     logging: configService.isDevelopment,
-    connectTimeoutMS: 5000,
     keepConnectionAlive: true,
   };
 };
@@ -62,10 +84,15 @@ export const databaseConfig = (
 /**
  * Creates TypeORM DataSource options from environment variables
  * Used for migration files and utility scripts
+ *
+ * Uses ConfigService under the hood to ensure:
+ * - Environment variable validation (via Joi schema)
+ * - Type-safe configuration access
+ * - Consistency with NestJS dependency injection context
  */
 export function createDataSourceOptions(
-  overrides: Partial<DataSourceOptions> = {},
-): DataSourceOptions {
+  overrides: Partial<PostgresConnectionOptions> = {},
+): PostgresConnectionOptions {
   const dbConfig = getEnvDatabaseConfig();
 
   return {
@@ -75,21 +102,20 @@ export function createDataSourceOptions(
     username: dbConfig.username,
     password: dbConfig.password,
     database: dbConfig.database,
+    ssl: dbConfig.ssl,
     synchronize: false,
     logging: dbConfig.logging as boolean,
-    connectTimeoutMS: 5000,
     migrationsTableName: 'typeorm_migrations',
-    keepConnectionAlive: true,
     ...overrides,
-  } as DataSourceOptions;
+  } as PostgresConnectionOptions;
 }
 
 /**
  * Creates DataSource options for production (compiled dist files)
  */
 export function createProductionDataSourceOptions(
-  overrides: Partial<DataSourceOptions> = {},
-): DataSourceOptions {
+  overrides: Partial<PostgresConnectionOptions> = {},
+): PostgresConnectionOptions {
   const baseDir = path.resolve(__dirname, '../../');
 
   return createDataSourceOptions({
@@ -103,8 +129,8 @@ export function createProductionDataSourceOptions(
  * Creates DataSource options for development (TypeScript source files)
  */
 export function createDevelopmentDataSourceOptions(
-  overrides: Partial<DataSourceOptions> = {},
-): DataSourceOptions {
+  overrides: Partial<PostgresConnectionOptions> = {},
+): PostgresConnectionOptions {
   return createDataSourceOptions({
     entities: ['src/modules/**/entities/*.entity.ts'],
     migrations: ['src/migrations/*.ts'],
@@ -116,8 +142,8 @@ export function createDevelopmentDataSourceOptions(
  * Creates DataSource options for testing
  */
 export function createTestDataSourceOptions(
-  overrides: Partial<DataSourceOptions> = {},
-): DataSourceOptions {
+  overrides: Partial<PostgresConnectionOptions> = {},
+): PostgresConnectionOptions {
   const baseDir = path.resolve(__dirname, '../../');
 
   return createDataSourceOptions({
@@ -125,7 +151,7 @@ export function createTestDataSourceOptions(
     synchronize: true,
     dropSchema: true,
     entities: [path.join(baseDir, 'dist/modules/**/entities/*.entity.js')],
-    logging: false as unknown as boolean,
+    logging: false,
     ...overrides,
   });
 }

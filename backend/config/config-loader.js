@@ -5,23 +5,35 @@
  * that run outside of the NestJS application context.
  *
  * All scripts should use this loader instead of accessing process.env directly.
- * This ensures consistency with the @backend/src/config/env module.
+ * This ensures consistency with the @backend/src/config/env/config.service module.
+ *
+ * NOTE: This is a JavaScript module that mirrors the TypeScript ConfigService
+ * for use in Node.js scripts. For TypeScript code, use the ConfigService directly.
  */
 
 require('dotenv').config();
 
 /**
  * Get database configuration from environment variables
+ * Uses same defaults and validation as the TypeScript ConfigService
  * @returns {Object} Database configuration object
  */
 function getDatabaseConfig() {
+  // These defaults match @backend/src/config/env/env.validation.ts
+  const dbHost = process.env.DB_HOST || 'localhost';
+  const dbPort = parseInt(process.env.DB_PORT || '5432', 10);
+  const dbUsername = process.env.DB_USERNAME || 'fountain';
+  const dbPassword = process.env.DB_PASSWORD || 'fountain_dev_pass';
+  const dbName = process.env.DB_NAME || 'fountain_db';
+  const dbLogging = process.env.DB_LOGGING === 'true';
+
   return {
-    DB_HOST: process.env.DB_HOST || 'localhost',
-    DB_PORT: parseInt(process.env.DB_PORT || '5432', 10),
-    DB_USERNAME: process.env.DB_USERNAME || 'fountain',
-    DB_PASSWORD: process.env.DB_PASSWORD || 'fountain_dev_pass',
-    DB_NAME: process.env.DB_NAME || 'fountain_db',
-    DB_LOGGING: process.env.DB_LOGGING === 'true',
+    DB_HOST: dbHost,
+    DB_PORT: dbPort,
+    DB_USERNAME: dbUsername,
+    DB_PASSWORD: dbPassword,
+    DB_NAME: dbName,
+    DB_LOGGING: dbLogging,
   };
 }
 
