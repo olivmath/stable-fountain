@@ -100,23 +100,26 @@ export class ConfigService {
     return this.configService.getOrThrow<number>('COLLATERAL_RATIO_EMERGENCY');
   }
 
-  // ===== Future: Xahau/XRPL Integration =====
-  get xrplNetwork(): string | undefined {
-    return this.configService.get<string>('XRPL_NETWORK');
+  // ===== Xahau/XRPL Integration =====
+  get xrplNetwork(): string {
+    return this.configService.getOrThrow<string>('XRPL_NETWORK');
   }
 
-  get xrplWebsocketUrl(): string | undefined {
-    return this.configService.get<string>('XRPL_WEBSOCKET_URL');
+  get xrplWebsocketUrl(): string {
+    return this.configService.getOrThrow<string>('XRPL_WEBSOCKET_URL');
   }
 
-  get xrplAccount(): string | undefined {
-    return this.configService.get<string>('XRPL_ACCOUNT');
+  get xrplAccount(): string {
+    return this.configService.getOrThrow<string>('XRPL_ACCOUNT');
   }
 
-  get xrplSecret(): string | undefined {
-    return this.configService.get<string>('XRPL_SECRET');
+  get xrplSecret(): string {
+    return this.configService.getOrThrow<string>('XRPL_SECRET');
   }
 
+  /**
+   * All XRPL configurations are required, so if they exist, they are always configured
+   */
   get isXrplConfigured(): boolean {
     return !!(
       this.xrplNetwork &&

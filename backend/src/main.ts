@@ -3,35 +3,27 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/env/config.service';
-import {
-  validateStartupEnvironment,
-  handleConfigurationError,
-} from './config/startup-validator';
 
 /**
  * Bootstrap function
  *
  * Initialization sequence:
- * 1. Validate required environment variables BEFORE creating NestJS app
- * 2. Create NestJS application (which loads ConfigModule)
+ * 1. Create NestJS application (ConfigModule is loaded first as @Global)
+ * 2. ConfigModule validates all environment variables against Joi schema
  * 3. Setup global pipes and middleware
  * 4. Configure API documentation (Swagger)
  * 5. Start listening on configured port
  *
- * If any step fails (especially configuration), the app exits with a clear error
+ * If configuration validation fails, the app exits with a clear error from Joi
  */
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   try {
-    // Step 1: Validate environment variables BEFORE creating the app
-    // This ensures fast failure with clear messaging if something is missing
-    logger.log('🔍 Validating environment variables...');
-    validateStartupEnvironment();
-
-    // Step 2: Create NestJS application
+    // Step 1: Create NestJS application
     // The ConfigModule will be loaded first (as it's @Global)
-    // and will validate all env vars against the schema
+    // and will validate all env vars against the Joi schema
+    // If any required variable is missing, this will throw a validation error
     logger.log('📦 Initializing NestJS application...');
     const app = await NestFactory.create(AppModule);
 
@@ -91,23 +83,16 @@ async function bootstrap() {
     console.log(`  📚 Docs:           http://localhost:${port}/docs`);
     console.log('\n');
   } catch (error) {
-    // Detailed error handling for configuration issues
+    // Error handling for startup failures
     const logger = new Logger('Bootstrap');
 
-    if (error instanceof Error && error.message.includes('valid')) {
-      // Configuration validation error from NestJS ConfigModule
-      logger.error('Configuration validation failed');
-      handleConfigurationError(error);
-    } else {
-      // Other startup errors
-      logger.error(`Fatal error during startup: ${error}`);
-      console.error('\n');
-      console.error('═'.repeat(64));
-      console.error('Unexpected error during application startup:');
-      console.error(error);
-      console.error('═'.repeat(64));
-      console.error('\n');
-    }
+    logger.error('Fatal error during application startup');
+    console.error('\n');
+    console.error('═'.repeat(64));
+    console.error('Application initialization failed:');
+    console.error(error instanceof Error ? error.message : String(error));
+    console.error('═'.repeat(64));
+    console.error('\n');
 
     process.exit(1);
   }

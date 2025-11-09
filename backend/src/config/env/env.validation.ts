@@ -17,11 +17,13 @@ export const validationSchema = Joi.object({
   // ===== Server Configuration =====
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
-    .default('development')
+    .required()
     .messages({
+      'any.required': 'NODE_ENV is required. Must be one of: development, production, test',
       'any.only': 'NODE_ENV must be one of: development, production, test',
     }),
-  PORT: Joi.number().port().default(3000).messages({
+  PORT: Joi.number().port().required().messages({
+    'any.required': 'PORT is required. Provide a valid port number (1-65535)',
     'number.port': 'PORT must be a valid port number (1-65535)',
   }),
 
@@ -32,8 +34,9 @@ export const validationSchema = Joi.object({
       'any.required': 'DB_HOST is required. Provide the database hostname.',
       'string.empty': 'DB_HOST cannot be empty.',
     }),
-  DB_PORT: Joi.number().port().default(5432).messages({
-    'number.port': 'DB_PORT must be a valid port number (default: 5432)',
+  DB_PORT: Joi.number().port().required().messages({
+    'any.required': 'DB_PORT is required. Provide a valid port number for database.',
+    'number.port': 'DB_PORT must be a valid port number',
   }),
   DB_USERNAME: Joi.string()
     .required()
@@ -49,7 +52,8 @@ export const validationSchema = Joi.object({
         'DB_PASSWORD is required. Provide the database password.',
       'string.empty': 'DB_PASSWORD cannot be empty.',
     }),
-  DB_NAME: Joi.string().default('postgres').messages({
+  DB_NAME: Joi.string().required().messages({
+    'any.required': 'DB_NAME is required. Provide the database name.',
     'string.empty': 'DB_NAME cannot be empty.',
   }),
 
@@ -63,42 +67,52 @@ export const validationSchema = Joi.object({
       'string.empty': 'JWT_SECRET cannot be empty.',
       'string.min': 'JWT_SECRET must be at least 32 characters long.',
     }),
-  JWT_EXPIRATION: Joi.string().default('7d').messages({
+  JWT_EXPIRATION: Joi.string().required().messages({
+    'any.required': 'JWT_EXPIRATION is required. Provide JWT token expiration time (e.g., 7d, 24h).',
     'string.empty': 'JWT_EXPIRATION cannot be empty.',
   }),
 
   // ===== Queue & Cache (Redis) =====
-  REDIS_URL: Joi.string().default('redis://localhost:6379').messages({
+  REDIS_URL: Joi.string().required().messages({
+    'any.required': 'REDIS_URL is required. Provide Redis connection URL (e.g., redis://localhost:6379).',
     'string.uri': 'REDIS_URL must be a valid Redis connection URL.',
   }),
 
   // ===== Webhooks & Async Processing =====
-  WEBHOOK_RETRY_ATTEMPTS: Joi.number().default(3).messages({
+  WEBHOOK_RETRY_ATTEMPTS: Joi.number().required().messages({
+    'any.required': 'WEBHOOK_RETRY_ATTEMPTS is required. Provide number of webhook retry attempts.',
     'number.base': 'WEBHOOK_RETRY_ATTEMPTS must be a number.',
   }),
-  WEBHOOK_RETRY_DELAY: Joi.number().default(5000).messages({
+  WEBHOOK_RETRY_DELAY: Joi.number().required().messages({
+    'any.required': 'WEBHOOK_RETRY_DELAY is required. Provide retry delay in milliseconds.',
     'number.base': 'WEBHOOK_RETRY_DELAY must be a number (milliseconds).',
   }),
 
   // ===== Collateralization Ratios =====
-  COLLATERAL_RATIO_MIN: Joi.number().default(150).messages({
-    'number.base': 'COLLATERAL_RATIO_MIN must be a number (default: 150%).',
+  COLLATERAL_RATIO_MIN: Joi.number().required().messages({
+    'any.required': 'COLLATERAL_RATIO_MIN is required. Provide minimum collateralization ratio (e.g., 150 for 150%).',
+    'number.base': 'COLLATERAL_RATIO_MIN must be a number.',
   }),
-  COLLATERAL_RATIO_EMERGENCY: Joi.number().default(120).messages({
-    'number.base': 'COLLATERAL_RATIO_EMERGENCY must be a number (default: 120%).',
+  COLLATERAL_RATIO_EMERGENCY: Joi.number().required().messages({
+    'any.required': 'COLLATERAL_RATIO_EMERGENCY is required. Provide emergency collateralization ratio (e.g., 120 for 120%).',
+    'number.base': 'COLLATERAL_RATIO_EMERGENCY must be a number.',
   }),
 
-  // ===== Future: Xahau/XRPL Integration (Optional) =====
-  XRPL_NETWORK: Joi.string().optional().messages({
-    'string.empty': 'XRPL_NETWORK cannot be empty if provided.',
+  // ===== Xahau/XRPL Integration =====
+  XRPL_NETWORK: Joi.string().required().messages({
+    'any.required': 'XRPL_NETWORK is required. Provide XRPL network name (e.g., mainnet, testnet, xahau).',
+    'string.empty': 'XRPL_NETWORK cannot be empty.',
   }),
-  XRPL_WEBSOCKET_URL: Joi.string().uri().optional().messages({
+  XRPL_WEBSOCKET_URL: Joi.string().uri().required().messages({
+    'any.required': 'XRPL_WEBSOCKET_URL is required. Provide WebSocket URL for XRPL node.',
     'string.uri': 'XRPL_WEBSOCKET_URL must be a valid WebSocket URL.',
   }),
-  XRPL_ACCOUNT: Joi.string().optional().messages({
-    'string.empty': 'XRPL_ACCOUNT cannot be empty if provided.',
+  XRPL_ACCOUNT: Joi.string().required().messages({
+    'any.required': 'XRPL_ACCOUNT is required. Provide XRPL account address.',
+    'string.empty': 'XRPL_ACCOUNT cannot be empty.',
   }),
-  XRPL_SECRET: Joi.string().optional().messages({
-    'string.empty': 'XRPL_SECRET cannot be empty if provided.',
+  XRPL_SECRET: Joi.string().required().messages({
+    'any.required': 'XRPL_SECRET is required. Provide XRPL secret key.',
+    'string.empty': 'XRPL_SECRET cannot be empty.',
   }),
 }).unknown(true);
