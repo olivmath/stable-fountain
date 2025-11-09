@@ -1,0 +1,3 @@
+- SONICA realmente precisa de tokens separados por cliente? Por quê exatamente?
+- Como seria isso de fato: "Rentabilizar durante captação (até 180 dias)"
+- Como seria o modelo de negocio: Sonica -> Cliente e MVP -> Sonica

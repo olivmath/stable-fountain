@@ -1,0 +1,361 @@
+
+18
+ Monthly Balance Adjustment 
+ 4.6   One challenge Xahau must manage is the additional expense of smart 
+ contracts compared to normal XRPL transactions. 
+ 4.7   On the XRPL, transaction fees cost as little as one drop or 0.000001 XRP. Against 
+ a total supply of 100 billion XRP, this is a trivial-but-sufficient cost. Hooks 
+ transactions, on the other hand, can cost orders of magnitude more to set and 
+ to trigger. Further, while every XRPL transaction is standardised, Hooks can vary 
+ enormously in their complexity and cost. To properly protect itself against spam 
+ and bloat from its Hooks, the Ledger must charge appropriately (and 
+ dynamically) for the size and logic complexity of every Hook transaction. 
+ 4.8   The consequence is that, as a smart contract chain that burns fees, Xahau XRP 
+ could easily be burned to near-zero, and certainly much more rapidly than 
+ equivalent XRP would be burned on the XRPL, potentially leading to perverse 
+ incentives to horde Xahau rather than use it to deploy and run Hooks. 
+ 4.9   To guard against these risks, Xahau needs a protocol-level mechanism that puts 
+ burned tokens back into circulation, but one that does not simply incentivise 
+ high fees. This is the purpose of the monthly balance adjustment. 
+ 4.10   The Monthly Balance Adjustment works as follows: 
+ (a)   Each month, each Xahau account can choose to claim (against the 
+ protocol) an adjustment based on their average Xahau XRP balance 
+ (computed since the last adjustment). The adjusted amount is the 
+ equivalent of 4% p.a. compounded (roughly 0.34% per month). 
+ (b)   Users can claim their balance adjustment by sending a  RewardClaim 
+ transaction to the Genesis account at any time provided 30 days has 
+ passed since the last claim. Doing so demonstrates they are an active 
+ user. 
+ (c)   Upon receipt of the claim transaction, the protocol, via the 
+ BalanceRewards  and  XahauGenesis  amendments, increases  the user’s 
+ account balance by the balance adjustment. 
+ (d)   Unclaimed balance adjustments are foregone as a penalty for inactivity. 
+ (e)   4% is the initial rate at launch, but it can be changed via the Governance 
+ Game if it proves too small or too large in the future. 
+ 4.11   This mechanism allows active users to claim a monthly adjustment that puts 
+ further Xahau XRP into circulating supply, mitigating the risk of the token being 
+ burned down to zero through smart contract execution fees. 
+ Page |  9 
+ Monthly Governance Validator Rewards 
+ 4.12   The Xahau Genesis Account is enabled with a Hook that controls, among other 
+ things, the emission of Xahau XRP. This Hook needs a governance arrangement 
+ so that it can be monitored, amended, and/or replaced in the face of 
+ changing network and real-world conditions. 
+ 4.13   It is well known that XRPL mainnet validators do not receive any kind of reward 
+ for the services they provide for underpinning the mainnet Ledger. However, 
+ infrastructure costs money to run, and real-world experience shows that this lack 
+ of incentive leads to a lack of actively managed validators. 
+ 4.14   The Xahau Genesis Hook needs to know, or be told, which accounts it must trust 
+ when deciding whether to update itself. So, those accounts must be known in 
+ advance, rather than emerging from the overlapping UNLs. 
+ 4.15   The technical solution to this problem is an incentivised Genesis Hook 
+ Governance Game that rewards certain Validators for overseeing the Hook. It 
+ works as follows: 
+ (a)   There are 20 “Seats” on the Genesis Hook Governance Game. 
+ (b)   Each Seat is controlled either by a single Xahau Account (Level 1) or a 
+ self-managing committee of 3-20 Accounts (Level 2). 
+ (c)   For each occupied Seat, the protocol mints and distributes 1/20  th  of the 
+ total Monthly Balance Adjustments claimed that month. 
+ (d)   If a Seat is held by a committee of Accounts, the rewards for that Seat 
+ are split in a manner of that committee’s choosing. 
+ (e)   If no users claim a Balance Adjustment that month no rewards are paid to 
+ any validators. 
+ (f)   Each Flag Ledger (256 ledgers) an on-ledger record called a  UNLReport  is 
+ generated. This report contains a list of validators’ public keys that 80% of 
+ other validators believe participated adequately in consensus since the 
+ previous Flag Ledger. The Genesis Hook will only distribute validator 
+ rewards to Seats that correspond to the public keys of validators on the 
+ UNLReport. 
+ 4.16   Thus, the Genesis Hook Governance Game includes a reward mechanism 
+ designed to ensure that trusted accounts are rewarded for running trustworthy 
+ validators, that those rewards are linked to user activity, and that those rewards 
+ put new Xahau XRP into distribution, mitigating the risk of a token liquidity 
+ crunch from high smart contract execution fees. 
+ Page |  10 
+ 5.   Burn2Mint Liquidity Solution 
+ 5.1   While the XRPL ecosystem currently operates on a single chain, the ecosystem 
+ will soon expand to encompass multiple parallel chains, like the Ripple/Peersyst 
+ EVM sidechain and Xahau. These sidechains will offer enhanced scalability, 
+ flexibility, and interoperability, fostering a more diverse and dynamic ecosystem 
+ for XRP and related digital assets. 
+ 5.2   As a sidechain, Xahau Ledger must be capable of inter-chain value exchange 
+ with the XRPL. Xahau will enable that value exchange with the XRPL via a 
+ Burn2Mint liquidity portal that allows users to clone their XRP account address 
+ on Xahau and burn XRP on XRPL mainnet in return for a matching number of 
+ Xahau XRP in their cloned account on Xahau. This section explains the 
+ Burn2Mint function and why it was adopted ahead of other mechanisms. 
+ Existing Mechanisms and Their Flaws 
+ 5.3   There are several existing mechanisms for cross-chain value transfer, but each 
+ has specific drawbacks as follows: 
+ (a)   Centralised Exchanges:  Centralised exchanges (CEXs)  offer opaque 
+ liquidity on more than one chain. Most users will use a CEX to obtain their 
+ first coins on a new chain, and these are an important but centralised 
+ part of the ecosystem. Reliance on CEXs is a centralising factor in an 
+ ecosystem. 
+ (b)   Layer 2 Bridges:  Layer 2 bridges are semi-decentralised  custodial lending 
+ or wrapping services. Locking up collateral on one chain allows the user 
+ to borrow against it on the second chain. Returning funds on the second 
+ chain unlocks the collateral on the first chain. These services are 
+ honeypots that attract exploits. Further, they have a lack of legal clarity in 
+ many jurisdictions, including clarity on the legal role of the operators on 
+ the bridge and the status of the locked coins. 
+ (c)   Atomic Swaps:  If two chains support hash time lock  contracts, then an 
+ atomic swap could be used to transfer value between the chains. In this 
+ protocol two users wanting to perform opposite trades are match-made. 
+ The protocol ensures that either both trades occur, or both do not. Atomic 
+ swaps have three drawbacks. First, if the counterparty does not perform 
+ their trade the first party must wait for the time-lock expiry. Secondly, a 
+ critical mass of users on both chains must exist so that users wishing to 
+ swap can always find a counterparty wishing to make the opposite trade. 
+ Finally, if the directionality of the trading is generally in one direction it 
+ may not be possible to find counterparties. 
+ 5.4   While none of the above mechanisms are precluded by Burn2Mint – that is, all 
+ are a possible feature of Xahau in the future – Burn2Mint is a native cross-chain 
+ value transfer mechanism that is immediately available and avoids all the 
+ identified drawbacks. 
+ Page |  11 
+ Burn2Mint Mechanism - Burning XRP on the XRPL 
+ 5.5   Xahau’s Burn2Mint allows a user with an account on the XRPL mainnet to clone 
+ that Account on Xahau (same  r-address  and same private  key/s) and then 
+ burn XRP on the XRPL mainnet via an arbitrarily high transaction fee and mint a 
+ matching number of Xahau XRP into their cloned Account on Xahau. 
+ 5.6   This mechanism involves the following steps: 
+ (a)   Burn Fees on XRPL  : The first step involves burning  a certain amount of XRP 
+ on the XRPL by executing an  AccountSet  transaction  with an arbitrarily 
+ high fee. Once the transaction is validated, the high fee now represents 
+ burnt (i.e. the irreversible destruction of) XRP. This XRP is removed from 
+ circulation on the XRPL and can never be recovered based on current 
+ ledger rules. 
+ (b)   Generating an XPOP (Proof of Burn)  : Using a special  client that listens to 
+ XRPL for Burn2Mint transactions and the validation messages for the 
+ ledgers they appear in, an XPOP (see: XLS41) is generated for the 
+ transaction. The XPOP is a non-interactive offline cryptographic proof that 
+ the transaction was applied on the XRPL. Any party with an XPOP verifier 
+ can verify that the burn happened. 
+ (c)   Minting on Xahau  : The XPOP of the burn transaction  is submitted to Xahau 
+ using an  Import  transaction. The Import transaction  must be performed on 
+ Xahau by the clone Account (same  r-address  and same  private key/s) of 
+ the XRP Account that initiated the burn transaction. The XPOP is 
+ converted into a hex blob and supplied as a field in the Import 
+ transaction. If all conditions are met Xahau now mints the required 
+ number of Xahau XRP to the Xahau Account. 
+ (d)   B2M Ratio Schedule:  The amount of Xahau XRP minted  in response to 
+ each XRP burned is determined by the B2M Ratio Schedule. The B2M 
+ Ratio Schedule starts at parity - 1 XRP burned mints 1 Xahau XRP - for the 
+ first 2 million ledgers from launch. It then reduces smoothly with every 
+ ledger closed - each XRP burned mints progressively less Xahau XRP - for 
+ the next 28 million ledgers, until the Burn2Mint function self-terminates 
+ after the 30 millionth ledger from launch. 
+ Xahau’s B2M Ratio Schedule 
+ Xahau Ledgers Closed Since 
+ Genesis Amendment Activated 
+ B2M Ratio 
+ XRP Burned : Xahau XRP Minted 
+ First 2 million ledgers   1:1 
+ Next 28  million ledgers   1 XRP burned mints 1/28 millionth 
+ less Xahau XRP per ledger closed 
+ After the 30 millionth ledger from 
+ launch 
+ Burn2Mint disabled - no further 
+ minting possible 
+ Page |  12 
+ (e)   Cloning Account on Xahau Ledger  : The  Import  transaction is special 
+ because it can be submitted using an Account that does not yet exist on 
+ Xahau. If the clone Account does not yet exist on Xahau, it will be 
+ created as part of the minting process, and the network will credit the 
+ Account with 2 Xahau XRP, which covers the account reserve (1 Xahau 
+ XRP) and 5 ledger objects, for free, to get started. If the Account is 
+ created but Xahau is uncertain about its keying (because a RegularKey 
+ or SignerList was used) then the account will be created in a blackholed 
+ state. If the Account already exists on Xahau then the ImportSequence 
+ number on the AccountRoot is verified against the Sequence in the burn 
+ transaction (which is embedded inside the XPOP) to prevent replay 
+ attacks. Upon successful Burn2Mint the ImportSequence is updated to 
+ reflect the most recently submitted XPOP for this account. 
+ (f)   Key Synchronization  : The keying information for an account on the XRPL 
+ may also be imported to Xahau at any time, at the user’s discretion. This is 
+ done by using a  SetRegularKey  or  SignerListSet  transaction  on the XRPL 
+ mainnet and then generating an XPOP from it. If the user does not wish to 
+ change their keys on mainnet then they must repeat their existing 
+ RegularKey or SignerList within the relevant transaction (thus executing 
+ the transaction but not making any changes to the account keying). The 
+ XPOP can then be used with the  Import  transaction  on Xahau to transfer 
+ the mainnet keying to the same account on Xahau. This is useful for 
+ multisign accounts, vanity addresses and for accounts with a 
+ compromised master key. 
+ 5.7   Together, these steps allow a user, if they ever so choose, to clone their existing 
+ XRPL account on Xahau and to mint Xahau XRP into that clone account by 
+ burning XRP on mainnet via transaction fees. The process both guarantees the 
+ XRP has been burned and that both accounts are controlled by the same 
+ person. 
+ 5.8   Anybody wishing to convert Xahau XRP back into mainnet XRP can do so by 
+ trading it through a centralised exchange in lieu of other technical solutions 
+ (bridges, atomic swaps or a reverse path Burn2Mint, if the Import amendment 
+ goes live on the XRPL mainnet) being implemented. 
+ Benefits of Burn2Mint 
+ 5.9   Burn2Mint function has several important benefits: 
+ (a)   Decentralised:  No one can block access to the Burn2Mint  mechanism, 
+ and no authorization is needed to use it. For some users, in some cases, 
+ Burn2Mint may be the only legal option to obtain liquidity on Xahau. 
+ Page |  13 
+ (b)   Self-sovereign Liquidity  : Both sides of the Burn2Mint mechanism can (and 
+ should) run on the user’s own infrastructure. The user burns XRP on their 
+ own infrastructure, generates and submits the XPOP to their own 
+ infrastructure, and thereby also mints the Xahau XRP on their own 
+ infrastructure. Aside from being decentralised and censorship proof, this 
+ means that everyone, but particularly exchanges and businesses, can 
+ freely decide when and how much XRP to move to Xahau. They provide 
+ their own liquidity to themselves, on demand, on their own infrastructure. 
+ (c)   Non-Custodial  : Burnt XRP ceases to exist on the chain  on which it was 
+ burnt. Because it no longer exists, the burnt XRP cannot become 
+ someone else’s property, it cannot be held in trust, nor in a “Door” 
+ account, nor in some sort of custodial or escrow arrangement. Therefore, 
+ Burn2Mint is truly non-custodial and there is no counterparty or 
+ intermediary. 
+ (d)   Exploit-Resistant  : Burn2Mint XPOPs rely on the same  trust mechanics that 
+ secure the XRPL, in particular validators keys and validator list keys. As a 
+ result, the Burn2Mint mechanism is at least as secure as the network itself 
+ against witness (i.e. validator) hijacking and tampering. 
+ (e)   Key Free  : In a traditional two-way bridge, a “Door”  account containing 
+ users’ locked funds is maintained by some set of signing keys or witness 
+ keys. This means there are keys  somewhere  that could  be used to gain 
+ unauthorized access to the “Door” account and exploit the bridge by 
+ distributing users’ locked funds to an unauthorized third party. By contrast 
+ the Burn2Mint solution does not use a “Door” account, and thus there are 
+ no keys and no locked funds to hack. 
+ Impact on XRPL 
+ 5.10   Burn2Mint effectively gives every XRP holder the option to port their XRP to 
+ Xahau. That option will be valuable and useful to the extent Xahau’s smart 
+ contract features mean the market prices Xahau XRP higher than XRP on 
+ mainnet. The progressive “halvening” of the B2M ratio and eventual disabling of 
+ the B2M mechanism prevents any risk that all XRP might be burned in this way. 
+ 5.11   Enterprise users may be better served using centralised exchanges to purchase 
+ the Xahau XRP they need. If the market values Xahau XRP the same as XRP on 
+ mainnet this would imply sufficient liquidity of each token exists to meet user 
+ demand. 
+ Page |  14 
+ Burn2Mint Summary 
+ 5.12   Burn2Mint is a novel cross chain value transfer mechanism for XRPL protocol 
+ and PoA-backed chains. The mechanism involves a value transfer primitive that 
+ is self-sovereign, secure, and avoids many of the legal and technical pitfalls 
+ associated with traditional value transfer methods. Its inclusion in the ecosystem 
+ adds a native, decentralised option to transfer value from the XRPL without a 
+ counterparty and without custody. 
+ 6.   Xahau Governance Game 
+ 6.1   XRP Ledger Consensus Protocol (Previously: Ripple Protocol Consensus 
+ Algorithm) chains rely on a robust overlap in validator UNLs to define the 
+ canonical ledger. If a validator does not trust enough of the same machines 
+ that everyone else trusts, they risk unknowingly listening to an irrelevant fork of 
+ the ledger. Determining the best UNL is a matter of social (off-chain) consensus. 
+ 6.2   To assist that social consensus, various entities publish dUNLs – lists of validators 
+ everyone should follow. Xahau will follow the same approach, with the XRPL 
+ Foundation and others expected to publish such lists. So, like the XRPL, Xahau 
+ will be a public permissionless chain for which anyone can run a validator. And 
+ like the XRPL, any update of the protocol will be dependent on more than 80% 
+ of UNL validators supporting the changes, in the same manner as the XRPL. 
+ 6.3   While the dUNL helps define the validators responsible for the canonical Ledger, 
+ Xahau has a second governance challenge, not present in the XRPL mainnet: 
+ the governance of its Genesis Hook. The XRPL mainnet minted all of its XRP on 
+ creation. Xahau cannot follow this approach. Its native token needs to be 
+ minted in response to the happening of predefined events (i.e. Burn2Mint, 
+ Account Adjustments, Validator Rewards.) It uses a Hook on its Genesis Account 
+ to achieve this. 
+ 6.4   This means Xahau needs a governance mechanism for its Genesis Hook in case 
+ the Hook needs to be adjusted or replaced. This is known as the Governance 
+ Game: 
+ (a)   Purpose:  The Governance Game exists to ensure that  the UNL validators 
+ remain active and allows those active members to maintain the Hook on 
+ the Genesis account that controls the distribution of Xahau XRP. 
+ (b)   Seats:  There are 20 Seats at a table. A Seat is a  Xahau Account whose 
+ vote counts in the Governance Game. 
+ (c)   L1 Table  : The Governance Game requires at least the  top-level table. This 
+ is called the Level 1 table (L1 Table). This table by definition exists only on 
+ the Genesis account according to the Governance Game Hook installed 
+ there. A seat at the L1 table may be filled by an Account or may be 
+ empty. These seats are called L1s. 
+ Page |  15 
+ (d)   L2 Table:  An L1 seat may itself be filled by an Account which has another, 
+ different, Governance Hook installed on it. The seats at this table are 
+ called L2s, and the table is an L2 Table. The structure is a  self-managing 
+ committee of 3-20 Accounts that collectively control the L1 seat and its 
+ voting rights. Thus up to 400 Accounts may be involved in the two layer 
+ Governance game, depending on the mix of L1 and L2 Seats. 
+ (e)   Filling Seats:  L1 Seats are filled or vacated by 80%  vote of all existing filled 
+ L1 Seats. For L2 Seats, the committee of Accounts that collectively holds 
+ that L1 Seat invites or disinvites new members (up to a maximum or 20 
+ and down a minimum of 3) by majority vote, or according to whatever 
+ other logic or rules they deem fit. No other Seats have any control over 
+ the members of an L2 Table. 
+ (f)   Voting:  Each L1 Seat has 1 vote in the Governance  Game. For  L2 Seats, 
+ the single vote of its L2 table is determined by whatever logic that L2 
+ table decides. The default is more than 50% vote of the L2 Seat members 
+ at that L2 table. 
+ (g)   Hook Changes:  All changes to the Hook are voted on  via the 
+ Governance Game. A Hook change is only successful if supported by the 
+ defined % vote of all Seats. The regular vote is 80%, but for the increase of 
+ the rate of balance adjustment it is 100%. 
+ (h)   Rewards:  To incentivise L1 Seats to run reliable validators,  L1 Seats earn 
+ monthly Rewards provided they actively participate in consensus. 
+ (i)   Foundation of dUNL:  The validators run by those participating  in the 
+ Genesis Hook Governance Game should form the foundation of any 
+ dUNL, as any Seat that performs unreliably risks being voted out by the 
+ other Seats. 
+ 6.5   The different types of Seats allow for a greater diversity of participating 
+ Accounts without undermining security. Level 1 Seats are suitable to Accounts 
+ controlled by significant entities the community can trust, while Layer 2 Seats 
+ allow a broader pool of participants, but since their collective participation 
+ counts as 1 vote, their numbers do not overwhelm the trust placed in Level 1 
+ Seats. 
+ 6.6   Thus, the Governance Game allows up to 400 Accounts to participate and 
+ rewards those Accounts for doing so provided they also participate in 
+ consensus by running a reliable validator. 
+ 7.   The Xahau Launch Alliance 
+ 7.1   Xahau has been developed by an alliance of 5 independent entities with a 
+ track record of building on and supporting the XRPL ecosystem. Those entities 
+ are as follows: 
+ Page |  16 
+ (a)   XRPL Labs (Xaman), the software developer behind the XUMM wallet, 
+ Hooks, and  Xahaud  that has carried most of the expertise  and cost of 
+ developing Xahau. 
+ (b)   GateHub Limited, a multinational technology company, crypto 
+ exchange, and crypto service provider, including Stablecoins issued on 
+ the XRPL. 
+ (c)   Titanium OU, an IT consulting and infrastructure firm specialising in 
+ providing secure hosting and a major provider of the infrastructure for the 
+ XRPL (as  Alloy Networks  ). 
+ (d)   Evernode Labs Ltd, the developer of the Evernode smart contract project 
+ and responsible for deploying it to Xahau. 
+ (e)   Digital Governing OU, an incorporated entity associated with a globally 
+ active firm for accounting, audit, and legal services. 
+ 8.   Launch Fully Functional & Decentralised 
+ 8.1   Xahau will launch fully functional and decentralised without raising funds. 
+ No Centralised Control 
+ 8.2   Xahau will launch with 8 of its 20 Governance Game Seats filled: 
+ (a)   5 will be Layer 1 Seats, each filled by a member of the Xahau Launch 
+ Alliance. 
+ (b)   3 will be Layer 2 Tables, one of which will be filled by a committee of 
+ Exchanges and the other a diverse committee of XRP community 
+ projects, developers, and long-term supporters. 
+ (c)   1 will be FYEO, a company offering code audit and review services on 
+ blockchain development, including software such as Hooks. 
+ No Funds Being Raised 
+ 8.3   There is no ICO, and no funds are being raised from the launch. 
+ 8.4   The Xahau Alliance members have each independently funded their own 
+ development efforts. There’s no communal funding, nor any pooling of money 
+ or resources for the further development of Xahau. Nor is there any roadmap, or 
+ “Xahau Foundation”, or other centralised treasury. Any further development is 
+ wholly at the discretion of independent actors within the ecosystem. 
+ Page |  17 
+ No Promises 
+ 8.5   The Governance Game members are independent entities. There is no 
+ agreement, arrangement, or understanding between them about how to cast 
+ their vote, deploy their resources, or use their assets, including any Xahau XRP. It 
+ is only the logic of the Game – be a trustworthy Validator in the eyes of the 
+ other members or be voted out of the Game – that drives Validator behaviour. 
+ This is an inherent feature of the XRP Ledger Consensus Protocol (Previously: 
+ Ripple Protocol Consensus Algorithm) (PoA) mechanism Xahau uses. 
+ No Further Features Needed 
+ 8.6   While software, by its nature, needs to be maintained, there are no essential 
+ functionalities missing from  Xahaud  or in need of  further development for the 
+ software to be useful as a smart contract sidechain of the XRPL. 
+ Page |  18 
