@@ -21,6 +21,9 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
+    "migrate": "node scripts/database/migrate.js",
+    "test:db": "node scripts/database/check-connection.js",
+    "verify:tables": "node scripts/database/verify-tables.js",
     "generate:openapi": "ts-node scripts/generate-openapi.ts",
     "generate:sdk": "openapi-ts -i openapi.json -o ./sdk",
     "generate:all": "npm run generate:openapi && npm run generate:sdk"

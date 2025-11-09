@@ -1,18 +1,21 @@
-const { Client } = require('pg');
-require('dotenv').config();
+#!/usr/bin/env node
 
-const client = new Client({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT),
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+const { Client } = require('pg');
+const { getPostgresClientConfig } = require('../../config/config-loader');
+
+/**
+ * Verify database tables
+ * Uses configuration from @backend/config/config-loader module
+ *
+ * Usage: npm run verify:tables
+ */
+
+const client = new Client(getPostgresClientConfig());
 
 async function verifyTables() {
   try {
     await client.connect();
-    console.log('✓ Connected to Supabase\n');
+    console.log('✓ Connected to database\n');
 
     const result = await client.query(`
       SELECT table_name
@@ -23,9 +26,14 @@ async function verifyTables() {
 
     console.log('📋 Database Tables:');
     console.log('─'.repeat(40));
-    result.rows.forEach(row => {
-      console.log(`  • ${row.table_name}`);
-    });
+
+    if (result.rows.length === 0) {
+      console.log('  (No tables found)');
+    } else {
+      result.rows.forEach(row => {
+        console.log(`  • ${row.table_name}`);
+      });
+    }
 
     // Get column info for a sample table
     if (result.rows.length > 0) {
@@ -49,7 +57,7 @@ async function verifyTables() {
     console.log('\n✅ Database verification complete!');
     await client.end();
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('❌ Error:', error.message);
     process.exit(1);
   }
 }
