@@ -1,37 +1,37 @@
-import { IsString, IsEmail, IsUUID, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsUUID, IsOptional, IsEnum, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateStablecoinDto {
   @ApiProperty({
     example: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'Tokenizer ID',
+    description: 'Company/Tokenizer ID',
   })
   @IsUUID()
-  tokenizerId: string;
+  companyId: string;
 
   @ApiProperty({
-    example: 'client_123',
+    example: '88995721-e29b-41d4-a716-446655440001',
     description: 'Unique client identifier',
   })
   @IsString()
   clientId: string;
 
   @ApiProperty({
-    example: 'Acme Corp BRL Account',
-    description: 'Stablecoin account name',
+    example: 'Park America Building',
+    description: 'Client name',
   })
   @IsString()
-  name: string;
+  clientName: string;
 
   @ApiProperty({
     example: 'rN7n7otQDd6FczFgLdcqpHnZc5LiMvMPAr',
-    description: 'Client XRPL wallet address',
+    description: 'Company XRPL wallet address',
   })
   @IsString()
-  clientWallet: string;
+  companyWallet: string;
 
   @ApiProperty({
-    example: 'https://webhook.acme.com/fountain',
+    example: 'https://webhook.parkamerica.com/client123',
     description: 'Webhook URL for notifications',
     required: false,
   })
@@ -40,10 +40,24 @@ export class CreateStablecoinDto {
   webhookUrl?: string;
 
   @ApiProperty({
-    example: { documentId: '12345678901234', legalName: 'Acme Corp Ltd' },
-    description: 'Additional metadata',
-    required: false,
+    example: 'RLUSD',
+    enum: ['RLUSD', 'PIX'],
+    description: 'Deposit type: RLUSD for on-chain deposits, PIX for off-chain',
   })
-  @IsOptional()
-  metadata?: Record<string, any>;
+  @IsEnum(['RLUSD', 'PIX'])
+  depositType: 'RLUSD' | 'PIX';
+
+  @ApiProperty({
+    example: 'PABRL',
+    description: 'Stablecoin currency code (e.g., PABRL for Park America BRL)',
+  })
+  @IsString()
+  stableCode: string;
+
+  @ApiProperty({
+    example: 13000,
+    description: 'Amount in BRL to mint',
+  })
+  @IsNumber()
+  amount: number;
 }

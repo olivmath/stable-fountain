@@ -12,30 +12,43 @@ export class Stablecoin {
   id: string;
 
   @Column()
-  tokenizerId: string;
+  companyId: string;
 
   @Column({ unique: true })
   clientId: string;
 
   @Column()
-  name: string;
+  clientName: string;
 
   /**
-   * Wallet XRPL do cliente final que recebe os tokens
+   * Wallet XRPL da empresa que gerencia o stablecoin
    */
   @Column()
-  clientWallet: string;
+  companyWallet: string;
 
   // ========================================
   // ISSUED CURRENCY FIELDS
   // ========================================
 
   /**
-   * Código da moeda customizada na XRPL
-   * Formato: 3-40 caracteres ASCII (ex: APBRL, XYZBRL)
-   * Deve ser ÚNICO no sistema
+   * Tipo de depósito: RLUSD para depósitos on-chain, PIX para depósitos off-chain
+   */
+  @Column()
+  depositType: 'RLUSD' | 'PIX';
+
+  /**
+   * Código da stablecoin customizada na XRPL
+   * Formato: 3-40 caracteres ASCII (ex: PABRL, TSIBRL)
+   * Deve ser ÚNICO no sistema - equivalente ao currencyCode
    */
   @Column({ unique: true, length: 40 })
+  stableCode: string;
+
+  /**
+   * Código da moeda customizada na XRPL (alias para stableCode)
+   * Mantido para compatibilidade com código existente
+   */
+  @Column({ unique: true, length: 40, nullable: true })
   currencyCode: string;
 
   /**
