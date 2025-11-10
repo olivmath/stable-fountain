@@ -135,7 +135,7 @@ export class WalletManagerService {
         throw new Error(`Faucet error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
 
       this.logger.log(
         `✅ Wallet ${address} funded. Balance: ${data.account?.Balance || 'unknown'}`
