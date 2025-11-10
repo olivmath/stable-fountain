@@ -1,266 +1,391 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este arquivo fornece orientações ao Claude Code ao trabalhar neste repositório.
 
-## Project Overview
+## Visão Geral do Projeto
 
-**Peggy** is an admin-managed BRL stablecoin system backed by a global XRP pool. It provides a regulated on-ramp/off-ramp between fiat (Brazilian Real via PIX) and BRL tokens on the XRP Ledger.
+**Stable Fountain** é um serviço backend B2B SaaS para emissão e gerenciamento de stablecoins BRL customizadas na XRP Ledger (XRPL), projetado para empresas tokenizadoras de ativos reais.
 
-### Key Difference from Original Peggy
+### Modelo de Negócio
 
-**Original Peggy**: Each user creates an individual over-collateralized vault, deposits their own XRP, receives stablecoins independently. Decentralized model with liquidation mechanics.
+- **B2B SaaS:** Clientes são empresas tokenizadoras (ex: Sônica), não usuários finais
+- **Stablecoins customizadas:** Cada cliente pode ter seu próprio currency code (ex: APBRL, XYBRL)
+- **On/Off-ramp:** PIX (via Asas) ou XRP/RLUSD (via Binance)
+- **Compliance abstraído:** Tokenizadora faz KYC/AML, nós fornecemos infraestrutura técnica
 
-**New Peggy (this version)**: Single global XRP pool managed by an admin. Admin is the only entity that interacts with the hook to mint/burn tokens. Users never directly touch the blockchain - they receive/use BRL tokens and can transfer between themselves. Admin handles all on/off-ramp operations via PIX.
+### Arquitetura Atual: Issued Currencies (XRPL)
 
-### Use Case
+**Tecnologia Core:**
+- **XRPL Issued Currencies:** Tokens fungíveis nativos da XRP Ledger
+- **Trust Lines:** Conexões entre issuer e holders (gerencia saldos on-chain)
+- **Clawback:** Recuperação parcial de tokens (compliance/redemptions)
+- **Authorized Trust Lines:** Apenas contas aprovadas podem receber tokens (KYC)
 
-- **Compliance-focused**: Admin does KYC/AML, clients don't need Xahau accounts initially
-- **Simple UX**: Users see BRL tokens like traditional e-money, not crypto
-- **Pooled liquidity**: Better capital efficiency than individual vaults
-- **On-Ramp/Off-Ramp**: Seamless conversion between PIX (fiat) and BRL tokens
+**NÃO USAMOS:**
+- ❌ XRPL Hooks (pivotamos dessa arquitetura na Fase 1)
+- ❌ Xahau Network (voltamos para XRPL mainnet)
+- ❌ Smart contracts em WebAssembly
+- ❌ Pools de colateralização descentralizados
 
-## Core Architecture
+## Evolução do Projeto
 
-### Three-Tier Structure
+Este projeto passou por 3 fases distintas. **Para a história completa, consulte `/docs/01-evolution/project-journey.md`**.
 
-1. **Fiat Layer (Off-Chain)**: PIX payments between clients and admin
-2. **Token Layer (On-Chain)**: BRL tokens on XRPL, transferable between users
-3. **Collateral Layer (On-Chain)**: Global XRP pool, secured in hook smart contract
+### Fase 1: Hooks + Xahau (Deprecated)
+- Arquitetura inicial com smart contracts em C/WebAssembly
+- Pool global de XRP com 150% de colateralização
+- Singlecoin (RLBRL para todos)
+- **Status:** Deprecated - Referência histórica apenas
 
-### Data Flow
+### Fase 2: Client Discovery (Novembro 2024)
+- Entrevistas com Sônica (tokenizadora imobiliária)
+- Descoberta de requisitos reais do mercado
+- Learnings: múltiplos tokens, colateralização 1:1, PIX essencial
 
+### Fase 3: Issued Currencies (Atual)
+- Pivot para Issued Currencies XRPL nativas
+- Modelo B2B SaaS com webhook notifications
+- Integração PIX (Asas) + Binance (conversões XRP)
+- **Status:** Em desenvolvimento
+
+## Arquitetura Técnica
+
+### Backend (NestJS + TypeScript)
+
+**Estrutura de Módulos:**
 ```
-MINT (Fiat → BRL):
-Client PIX → Admin → Admin deposits XRP via hook → Hook issues BRL → User receives BRL
-
-RESGATE (BRL → Fiat):
-User sends BRL → Admin → Admin burns BRL via hook → Hook returns XRP → Admin PIX payment
-```
-
-### Pool State
-
-**Hook State**: Single storage entry `"GLOBAL_POOL"` (11 bytes key)
-- **Value**: 16 bytes total
-  - Bytes 0-7: `pool_xrp` (XFL float - total XRP collateral)
-  - Bytes 8-15: `pool_brl` (XFL float - total BRL tokens issued)
-
-**Pool Ratio**: Must maintain (pool_xrp × exchange_rate) / pool_brl ≥ 1.5 (150%)
-
-### Collateralization
-
-- **150%**: Minimum safe ratio. New BRL emissions check this before allowing issuance.
-- **120%**: Emergency threshold. If pool drops below this, admin must add XRP urgently.
-- **Formula**: `Ratio = (Total XRP drops × BRL/XRP rate) / Total BRL issued`
-
-**Example**:
-```
-Pool: 1000 XRP, exchange rate 150 BRL/XRP → 150,000 BRL collateral value
-Issued: 100,000 BRL tokens
-Ratio: 150,000 / 100,000 = 1.5 = 150% ✅ Exactly at minimum
-
-If ratio < 1.5: Hook rejects new mint operations
-If ratio < 1.2: Emergency mode (admin critical action needed)
-```
-
-## Code Structure
-
-### src/peggy.c
-
-**Main entry point**: `int64_t hook(uint32_t reserved)`
-
-**Key sections**:
-
-1. **Initialization** (lines 30-90):
-   - Get hook account and transaction sender
-   - Validate sender is admin (reject if not)
-   - Load admin account from hook parameters
-   - Load oracle trustline, get exchange rate
-
-2. **Pool Loading** (lines 92-101):
-   - Load global pool state from `"GLOBAL_POOL"` key
-   - Initialize pool_xrp and pool_brl if new pool
-
-3. **Amount Processing** (lines 104-124):
-   - Extract transaction amount and type (XRP vs BRL)
-   - Get beneficiary from InvoiceID field (20 bytes)
-
-4. **Admin Mint Path** (lines 126-176):
-   - Validates admin is sending XRP
-   - Checks collateral ratio won't drop below 150%
-   - Calculates BRL to issue: `amount_xrp × exchange_rate × (2/3)`
-   - Updates pool state
-   - Emits BRL payment to beneficiary
-
-5. **Admin Burn Path** (lines 178-228):
-   - Validates admin is sending BRL
-   - Checks BRL is issued by this hook
-   - Calculates XRP to return: `amount_brl / exchange_rate`
-   - Validates pool has sufficient XRP
-   - Updates pool state
-   - Emits XRP payment back to admin
-
-### src/include/ Headers
-
-- **hookapi.h**: Official XRPL Hook API (functions, constants, keylet types)
-- **macro.h**: Helper macros (TRACEVAR, ASSERT, float operations)
-- **extern.h**: External C function declarations
-- **error.h**: Error code definitions
-- **sfcodes.h**: Serialized field codes (sfAmount, sfAccount, etc)
-- **data.h**: Data structure definitions
-
-### scripts/
-
-**Setup Scripts**:
-- **decode.js**: Convert XRPL addresses to binary (for oracle accounts)
-- **trust-user.js**: User configures trustline to receive BRL tokens
-- **trust-oracle.js**: Oracle accounts establish trustline (determines exchange rate)
-
-**Operation Scripts** (NEW):
-- **admin-mint.js**: Admin deposits XRP, issues BRL to beneficiary
-  - Input: admin_secret, hook_account, xrp_amount, beneficiary_account
-  - Output: BRL tokens sent to beneficiary
-
-- **admin-burn.js**: Admin burns BRL, receives XRP
-  - Input: admin_secret, hook_account, brl_amount, beneficiary_account
-  - Output: XRP sent back to admin
-
-## Key Implementation Details
-
-### Admin-Only Operations
-
-All blockchain interactions are admin-only:
-```c
-// Line 52-55: Validate sender is admin
-int is_admin = 0;
-BUFFER_EQUAL(is_admin, admin_accid, otxn_accid, 20);
-if (!is_admin)
-    rollback(SBUF("Peggy: Only admin can interact with this hook"), 1);
+src/
+├── config/          - Configuração (env vars, validação)
+├── modules/
+│   ├── auth/        - Autenticação JWT (Tokenizers)
+│   ├── tokenizers/  - Gerenciamento de clientes B2B
+│   ├── stablecoins/ - CRUD de stablecoins (Issued Currencies)
+│   ├── operations/  - Mint/Burn operations (auditoria)
+│   ├── oracle/      - Exchange rates (XRP/BRL, RLUSD/BRL)
+│   ├── webhooks/    - Event notifications
+│   ├── xrpl/        - Integração XRPL (NOVO)
+│   ├── asas/        - Integração PIX via Asas (NOVO)
+│   └── binance/     - Integração conversão XRP (NOVO)
+└── database/        - TypeORM, entities, migrations
 ```
 
-No direct user transactions to hook allowed.
+**Banco de Dados (Supabase/PostgreSQL):**
+- Tokenizers (empresas clientes)
+- Stablecoins (stablecoins em emissão)
+- Operations (histórico de mint/burn)
+- Users (admins do sistema)
+- Webhooks (notificações para tokenizers)
+- Exchange rates (oráculos de preço)
 
-### BRL Issuance Logic
+### Fluxo de Mint (Criar Stablecoin)
 
-```c
-// Line 139-145: Calculate BRL at 150% collateralization
-int64_t brl_to_issue = float_multiply(amt, exchange_rate);
-brl_to_issue = float_mulratio(brl_to_issue, 0,
-    NEW_COLLATERALIZATION_NUMERATOR,      // 2
-    NEW_COLLATERALIZATION_DENOMINATOR);   // 3
-pool_brl = float_sum(pool_brl, brl_to_issue);
+**Via PIX:**
+```
+1. POST /stablecoins/mint (JWT auth)
+   ├─ Parâmetros: valor_brl, modo: "pix", webhook, wallet_destino, client_name
+   └─ Backend valida e salva no DB
+
+2. Backend → Asas API: gera QR Code PIX
+   └─ Retorna QR Code para tokenizadora
+
+3. Asas Webhook → Backend: PIX confirmado
+   └─ Backend registra recebimento, dispara fila Binance
+
+4. Fila Binance: Compra XRP com BRL
+   ├─ Valida slippage
+   └─ Transfere XRP para issuer wallet
+
+5. Fila Mint: Executa minting na XRPL
+   ├─ Payment transaction com currency code (ex: APBRL)
+   ├─ Amount proporcional ao depósito (1:1)
+   ├─ Estabelece trust line com holder
+   └─ Ativa clawback se necessário
+
+6. Backend → Tokenizadora Webhook: operação completa
+   └─ Inclui tx hash, currency code, amount
+
+**Timeout:** 10min; cancela se PIX não cair
 ```
 
-Multiplies XRP amount by exchange rate, then applies 2/3 ratio (150% collateral).
-
-### BRL Redemption Logic
-
-```c
-// Line 200-209: Calculate XRP to return, burn BRL
-int64_t xrp_to_return = float_divide(amt, exchange_rate);
-// Validate pool has enough XRP...
-pool_brl = float_sum(pool_brl, float_negate(amt));
-pool_xrp = float_sum(pool_xrp, float_negate(xrp_to_return));
+**Via On-Chain (XRP/RLUSD):**
+```
+1. POST /stablecoins/mint (modo: "on_chain_xrp")
+2. Backend cria wallet XRPL temporária + subscriber
+3. Retorna endereço para depósito
+4. Subscriber detecta transação on-chain → valida
+5. Transfere colateral para issuer wallet → Fila Mint
+6. Webhook de confirmação para tokenizadora
 ```
 
-Divides BRL amount by exchange rate to get XRP, updates pool.
+### Fluxo de Burn (Resgatar Stablecoin)
 
-### Oracle System
+```
+1. POST /stablecoins/:id/burn
+   ├─ Parâmetros: amount, modo (pix/on-chain)
+   └─ Pré-requisito: chave PIX ou wallet cadastrada
 
-Trustline between oracle_lo and oracle_hi:
-```c
-// Line 74-76: Generate keylet for oracle trustline
-util_keylet(SBUF(keylet), KEYLET_LINE,
-    oracle_lo, 20, oracle_hi, 20, SBUF(currency));
+2. Backend valida saldo na trustline (via XRPL API)
+
+3. Backend → XRPL: Clawback transaction
+   ├─ Recupera apenas o valor especificado
+   └─ Libera colateral proporcional
+
+4. Conversão:
+   ├─ Via PIX: vende XRP (Binance) → saca (Asas) → PIX
+   └─ Via On-Chain: transfere XRP/RLUSD direto
+
+5. Webhook: status "resgatado"
 ```
 
-The **sfLowLimit** of this trustline represents the BRL/XRP exchange rate (e.g., 150 = 150 BRL per XRP).
+### Gerenciamento de Saldos (On-Chain)
 
-### Beneficiary Tracking
+**Trust Lines = "Contas Bancárias" On-Chain:**
+- Cada stablecoin (currency code) tem suas próprias trust lines
+- Saldos trackados nativamente pela XRPL (não no nosso DB)
+- Consulta: `getAccountLines(holder_account, issuer_account)`
 
-Admin specifies which user gets tokens via InvoiceID:
-```c
-// Line 122-124: Extract beneficiary from InvoiceID
-uint8_t beneficiary[20];
-int64_t invoice_id_len = otxn_field(SBUF(beneficiary), sfInvoiceID);
+**Exemplo:**
+```javascript
+// Cliente Sônica tem 3 stablecoins diferentes:
+// APBRL (America Park), XYZBRL (outro cliente), FIDBRL (FIDC)
+
+const lines = await xrpl.getAccountLines({
+  account: "rSonica...",
+  peer: "rStableFountainIssuer..."
+});
+
+// Retorna:
+[
+  { currency: "APBRL", balance: "1000000", limit: "0" },
+  { currency: "XYZBRL", balance: "500000", limit: "0" },
+  { currency: "FIDBRL", balance: "250000", limit: "0" }
+]
 ```
 
-InvoiceID must be exactly 20 bytes (XRPL account ID in binary).
+**Colateral:**
+- Travado na issuer wallet (XRP/RLUSD)
+- Lastreamento 1:1 (não 150% como na Fase 1)
+- Auditável via XRPL API (transparência)
 
-## Important Differences from Original Peggy
+## Diferenças Críticas: Fase 1 vs Fase 3
 
-| Aspect | Original Peggy | New Peggy |
-|--------|--------|----------|
-| **Vaults** | Per-user, isolated | Single global pool |
-| **Collateral** | Individual ratios | Pool-wide ratio |
-| **Users** | Direct blockchain interaction | No hook interaction |
-| **Admin** | Not present | Central authority |
-| **Liquidation** | Automated takeover logic | Admin responsibility |
-| **Currency** | USD | BRL |
-| **Access** | Public (per-user) | Permissioned (admin-only) |
-| **On-Ramp** | User deposits XRP | Admin deposits XRP |
-| **Off-Ramp** | User sends USD back | Admin burns BRL |
+| Aspecto | Fase 1 (Hooks - Deprecated) | Fase 3 (Issued Currencies - Atual) |
+|---------|---------------------------|------------------------|
+| **Tecnologia** | XRPL Hooks (WebAssembly/C) | Issued Currencies (nativo XRPL) |
+| **Rede** | Xahau | XRPL Mainnet |
+| **Colateral** | Pool global 150% | 1:1 por token |
+| **Tokens** | Um único (RLBRL) | Múltiplos (APBRL, XYBRL...) |
+| **Smart Contracts** | Código C no hook | Nenhum (features nativas) |
+| **Clientes** | Recebem de pool global | Cada um com currency code próprio |
+| **Complexidade** | Alta (C, debugging difícil) | Baixa (APIs REST + XRPL.js) |
 
-## Removed Components
+## Importante para Desenvolvimento
 
-- **source_tag tracking**: No per-user identification needed (admin tracks off-chain)
-- **invoice_id takeover logic**: No liquidation mechanics (admin manages collateral)
-- **USD currency**: Completely replaced with BRL
-- **Trustline limit validation**: No per-user trustline size validation
-- **Individual vault state storage**: Replaced with single pool
+### Ao Trabalhar com Código
 
-## Development Workflow
+1. **NUNCA referencie Hooks ou Xahau** em código novo
+   - Se encontrar referências antigas, marque para remoção
 
-### To Test Locally
+2. **Use sempre XRPL nativo:**
+   - `xrpl` package (não `xrpl-hooks` ou `xahau-lib`)
+   - Issued Currencies transactions (Payment, TrustSet, Clawback)
 
-1. **Compile**: `clang --target=wasm32 -c src/peggy.c -o peggy.wasm -I src/include`
-2. **Setup**: Configure oracles and trustlines via scripts/
-3. **Deploy**: Upload peggy.wasm to Hooks Builder with admin + oracle parameters
-4. **Test Mint**: `admin-mint.js` with test amounts
-5. **Test Burn**: `admin-burn.js` to validate redemption
-6. **Monitor**: Check debug stream for transaction flow
+3. **Auditoria on-chain é suficiente:**
+   - Não precisamos replicar saldos no DB (trust lines fazem isso)
+   - DB só para operações, clientes, webhooks
 
-### Common Development Tasks
+4. **Segurança de wallets:**
+   - Chaves privadas em variáveis de ambiente (nunca commitar)
+   - Considerar HSM ou Vault para produção
+   - Wallets temporárias (mint on-chain) devem ser descartadas após uso
 
-**Add validation**: Modify hook.c before the pool state check (line ~95)
-**Change collateral ratio**: Modify macros at top (lines 20-23)
-**Add new script**: Follow pattern in scripts/admin-mint.js
-**Debug**: Use TRACEXFL(), TRACEVAR() macros, read debug stream
+### Ao Escrever Documentação
 
-## Security Considerations
+1. **Sempre esclareça a fase:**
+   - Se falar de Hooks, mencionar "Fase 1 (deprecated)"
+   - Se falar de Issued Currencies, mencionar "Arquitetura atual"
 
-### What's Secured by Smart Contract
+2. **Links para documentação:**
+   - Usar documentos em `/docs/`
+   - Docs oficiais XRPL: https://xrpl.org/
+   - Evitar links para Xahau/Hooks (só em seção histórica)
 
-✅ Collateral ratio enforcement (150%/120%)
-✅ Pool state integrity (immutable via hash)
-✅ Currency validation (only BRL emitted by hook)
-✅ Amount preservation (no creation/destruction except via mint/burn)
+### Estrutura de Documentação
 
-### What Requires Off-Chain Trust
+Consulte `/docs/README.md` para navegação completa:
+- **Evolução do projeto:** `/docs/01-evolution/project-journey.md`
+- **Pesquisa de mercado:** `/docs/02-research/`
+- **Arquitetura atual:** `/docs/03-architecture/`
+- **Guias backend:** `/docs/04-backend/`
+- **Referências:** `/docs/05-references/`
 
-❌ Admin honesty (can lie about pool state to users)
-❌ KYC/AML (admin responsibility, not in contract)
-❌ PIX payment reliability (admin must pay users)
-❌ Oracle accuracy (oracle accounts could lie about rate)
+## Cliente Principal: Sônica
 
-### Mitigation Strategies
+**Perfil:**
+- Tokenizadora de ativos reais (imobiliário, florestas, FIDC)
+- 10 clientes ativos, média empresas
+- Casos de uso: captação via CVM88, investidores varejo
 
-- **Admin multi-sig**: Use multi-signature wallet for admin account
-- **Oracle redundancy**: Have backup oracle accounts
-- **Auditing**: Regularly publish pool state to public ledger
-- **Regulatory compliance**: Follow BACEN guidelines for stablecoins
+**Cenário de Uso:**
+Captação de R$ 10M para "America Park" (Real Estate):
+1. Sônica cria stablecoin "APBRL"
+2. Investidores fazem PIX → recebem APBRL tokens
+3. Durante captação (até 180 dias): rentabiliza BRL off-chain
+4. Investidores transferem APBRL entre si (P2P via XRPL)
+5. Resgate: clawback tokens → conversão → PIX
 
-## Future Improvements
+**Status:** Comprometida a testar MVP em 1-3 meses
 
-1. **Multi-admin**: Support multiple admins with weighted voting
-2. **Decentralized oracle**: Replace single oracle with aggregated feed
-3. **Emergency pause**: Allow admin to freeze mint/burn operations
-4. **Fee mechanism**: Take small % on mint/burn for sustainability
-5. **Burn triggers**: Allow collateral ratio to automatically increase fees
-6. **Cross-chain**: Support bridging to other blockchains
+## Monetização (Propostas)
 
-## References
+1. **Taxas por transação:** 0.1-0.5% sobre mint/burn
+2. **SaaS por assinatura:** Planos basic/premium/enterprise
+3. **Parcerias/comissões:** Revenue sharing com Ripple (RLUSD)
 
-- [XRPL Hooks Documentation](https://xrpl-hooks.readme.io/)
-- [Trustlines - XRPL Docs](https://xrpl.org/trust-lines-and-issuing.html)
-- [Xahau Network](https://xahau.network/)
-- [Original Peggy (Richard Holland)](https://github.com/XRPLF/xrpl-hooks-examples)
+Ver `/docs/03-architecture/b2b-saas-model.md` para detalhes.
+
+## Segurança e Compliance
+
+### Pontos Críticos
+
+- **Chaves privadas:** Nunca commitar, usar HSM em produção
+- **Webhooks:** HMAC authentication, idempotência
+- **KYC/AML:** Responsabilidade da tokenizadora, mas trackamos para auditoria
+- **Clawback:** Só para compliance legítimo (resgate/correções)
+- **Rate limiting:** APIs devem ter throttling
+
+### Falhas Possíveis e Mitigações
+
+- **Asas/Binance downtime:** Implementar retries com backoff, fallbacks
+- **Volatilidade XRP:** Usar oracles, buffers de taxa, slippage validation
+- **Subscribers XRPL falham:** Fallback para polling
+- **Timeouts não gerenciados:** Cron jobs para limpeza de operações pendentes (>10min)
+
+## Referências Técnicas
+
+### XRPL Official Docs (Usar Sempre)
+
+- **Issued Currencies:** https://xrpl.org/docs/concepts/tokens/fungible-tokens/
+- **Stablecoins:** https://xrpl.org/docs/concepts/tokens/fungible-tokens/stablecoins/
+- **Clawback:** https://xrpl.org/docs/references/protocol/transactions/types/clawback
+- **Trust Lines:** https://xrpl.org/docs/concepts/tokens/fungible-tokens/authorized-trust-lines
+- **Ripple USD (RLUSD):** https://ripple.com/solutions/stablecoin/
+
+### Documentação Interna
+
+- **Especificação técnica completa:** `/docs/01-evolution/phase-3-final-architecture.md`
+- **Setup backend:** `/docs/04-backend/setup-guide.md`
+- **Logging:** `/docs/04-backend/logging-guide.md`
+- **Pesquisa com cliente:** `/docs/02-research/sonica-responses.md`
+
+### Deprecated (Não Usar em Código Novo)
+
+- ~~XRPL Hooks Documentation~~ (Fase 1 - ver `/docs/DEPRECATED/`)
+- ~~Xahau Network~~ (Fase 1 - ver `/docs/DEPRECATED/`)
+- ~~Original Peggy Hook~~ (Inspiração, não nossa arquitetura)
+
+## Comandos Úteis
+
+### Desenvolvimento Local
+
+```bash
+# Backend
+cd backend
+npm run start:dev
+
+# Testes
+npm run test
+npm run test:e2e
+
+# Migrations
+npm run migration:generate -- src/migrations/MigrationName
+npm run migration:run
+```
+
+### XRPL Interação (Exemplos)
+
+```javascript
+import { Client } from 'xrpl';
+
+// Conectar (testnet ou mainnet)
+const client = new Client('wss://s.altnet.rippletest.net:51233');
+await client.connect();
+
+// Verificar saldo de stablecoin
+const lines = await client.request({
+  command: 'account_lines',
+  account: 'rHolderAddress...',
+  peer: 'rIssuerAddress...'
+});
+
+// Emitir stablecoin (Payment)
+const tx = {
+  TransactionType: 'Payment',
+  Account: 'rIssuer...',
+  Destination: 'rHolder...',
+  Amount: {
+    currency: 'APBRL',
+    value: '1000',
+    issuer: 'rIssuer...'
+  }
+};
+
+// Clawback parcial
+const clawbackTx = {
+  TransactionType: 'Clawback',
+  Account: 'rIssuer...',
+  Amount: {
+    currency: 'APBRL',
+    value: '500',
+    issuer: 'rIssuer...'
+  },
+  Holder: 'rHolder...'
+};
+```
+
+## Glossário Rápido
+
+- **Issued Currency:** Token fungível nativo XRPL (ex: APBRL, XYBRL)
+- **Trust Line:** Conexão on-chain que permite holder receber tokens
+- **Clawback:** Recuperar tokens de holder (para compliance/resgates)
+- **Authorized Trust Lines:** Trust lines que requerem aprovação do issuer (KYC)
+- **Issuer:** Wallet que emite o token (nossa wallet central ou por cliente)
+- **Holder:** Wallet que possui tokens (tokenizadora ou investidores)
+- **Currency Code:** Código de 3-40 caracteres ASCII (ex: APBRL)
+- **RLUSD:** Stablecoin USD da Ripple (alternativa a USDC/USDT)
+- **Tokenizer:** Empresa cliente que usa nossa plataforma
+- **Mint:** Criar/emitir novos tokens
+- **Burn:** Destruir tokens (via Clawback)
+
+## Próximos Passos (Roadmap)
+
+**FASE 1 - Fundação (2-3 semanas):**
+- Completar migrações de entities (Stablecoin, Operation, Oracle)
+- Módulo XRPL básico (conexão + mint simples)
+- Setup Testnet (XRPL + Asas sandbox + Binance Testnet)
+
+**FASE 2 - Core (3-4 semanas):**
+- Módulos Asas + Binance (integração completa)
+- Queues Bull (BinanceConversion + Mint)
+- Endpoint mint via PIX completo
+- Testes E2E
+
+**FASE 3 - Avançado (2-3 semanas):**
+- Subscriber XRPL (depósitos on-chain)
+- Clawback service (resgate parcial)
+- Endpoint burn (PIX + On-Chain)
+- Trust Lines autorizadas
+
+**FASE 4 - Produção (1-2 semanas):**
+- Segurança (criptografia seeds, HSM)
+- Observabilidade (Prometheus, alertas)
+- Documentação OpenAPI + SDK
+- Load testing e hardening
+
+---
+
+**Versão:** 3.0 (Issued Currencies)
+**Última atualização:** Novembro 2024
+**Contato:** [Time de desenvolvimento]
+
+Para dúvidas ou esclarecimentos, consulte `/docs/01-evolution/project-journey.md` para contexto histórico.
