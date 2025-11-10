@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcrypt'; // bcrypt still used in register method
 import { User } from './entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -81,7 +81,7 @@ export class AuthService {
     try {
       this.logger.logOperationStart('LOGIN', { email: loginDto.email });
 
-      const { email, password } = loginDto;
+      const { email } = loginDto;
 
       // Step 1: Find user by email
       this.logger.logStep(1, 'Looking up user by email', { email });
@@ -93,24 +93,11 @@ export class AuthService {
 
       if (!user) {
         this.logger.logWarning('Login failed - User not found', { email });
-        throw new UnauthorizedException('Invalid email or password');
+        throw new UnauthorizedException('User not found');
       }
 
-      // Step 2: Validate password
-      this.logger.logStep(2, 'Comparing provided password with stored hash');
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-
-      this.logger.logValidation('Password match', isPasswordValid, {
-        status: isPasswordValid ? 'Correct' : 'Incorrect'
-      });
-
-      if (!isPasswordValid) {
-        this.logger.logWarning('Login failed - Invalid password', { email });
-        throw new UnauthorizedException('Invalid email or password');
-      }
-
-      // Step 3: Check if user is active
-      this.logger.logStep(3, 'Checking user account status', { isActive: user.isActive });
+      // Step 2: Check if user is active
+      this.logger.logStep(2, 'Checking user account status', { isActive: user.isActive });
 
       this.logger.logValidation('Account active', user.isActive, {
         status: user.isActive ? 'Active' : 'Inactive'
@@ -121,8 +108,8 @@ export class AuthService {
         throw new UnauthorizedException('User account is inactive');
       }
 
-      // Step 4: Generate JWT token
-      this.logger.logStep(4, 'Generating JWT token');
+      // Step 3: Generate JWT token
+      this.logger.logStep(3, 'Generating JWT token');
       const payload = {
         sub: user.id,
         email: user.email,
@@ -135,8 +122,8 @@ export class AuthService {
         expiresIn: this.configService.jwtExpiration
       });
 
-      // Step 5: Prepare response
-      this.logger.logStep(5, 'Preparing login response');
+      // Step 4: Prepare response
+      this.logger.logStep(4, 'Preparing login response');
       const response = {
         access_token: token,
         user: {
