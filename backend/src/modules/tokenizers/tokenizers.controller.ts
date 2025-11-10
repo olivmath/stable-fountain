@@ -4,11 +4,15 @@ import { TokenizersService } from './tokenizers.service';
 import { CreateTokenizerDto } from './dto/create-tokenizer.dto';
 import { UpdateTokenizerDto } from './dto/update-tokenizer.dto';
 import { Tokenizer } from './entities/tokenizer.entity';
+import { WalletManagerService } from '../blockchain/services/wallet-manager.service';
 
 @ApiTags('Tokenizers')
 @Controller('tokenizers')
 export class TokenizersController {
-  constructor(private readonly tokenizersService: TokenizersService) {}
+  constructor(
+    private readonly tokenizersService: TokenizersService,
+    private readonly walletManager: WalletManagerService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new tokenizer' })
@@ -43,5 +47,27 @@ export class TokenizersController {
   @ApiResponse({ status: 200, description: 'Tokenizer deleted' })
   remove(@Param('id') id: string) {
     return this.tokenizersService.remove(id);
+  }
+
+  @Post(':id/wallet')
+  @ApiOperation({
+    summary: 'Generate and assign XRPL wallet to tokenizer',
+    description: 'Creates a new XRPL wallet, encrypts the seed, and assigns it to the tokenizer',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Wallet generated and assigned',
+    schema: {
+      example: {
+        id: 'uuid',
+        address: 'rN7n7otQDd6FczFgLdlqtyMVrPbDcaLYwc',
+        encryptedSeed: 'base64-encoded-encrypted-seed',
+        xrplNetwork: 'testnet',
+        walletCreatedAt: '2024-11-10T01:18:00.000Z',
+      },
+    },
+  })
+  async generateWallet(@Param('id') tokenizerId: string) {
+    return this.tokenizersService.generateAndAssignWallet(tokenizerId);
   }
 }
