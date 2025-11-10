@@ -46,7 +46,7 @@ curl -X POST http://localhost:3000/api/v1/auth \
 
 ---
 
-## 🪙 Exemplo 2: Create new Stablecoin (Depósito On-Chain RLUSD → Create Token: CUSTOM_BRL)
+## 🪙 Exemplo 2A: Create new Stablecoin (Depósito On-Chain RLUSD → Create Token: CUSTOM_BRL)
 
 ### Requisição:
 
@@ -163,7 +163,7 @@ curl -X POST http://localhost:3000/api/v1/stablecoin \
 
 
 
-## 🪙 Exemplo 2: Mint more Stablecoin (Depósito On-Chain RLUSD → Mint +CUSTOM_BRL)
+## 🪙 Exemplo 2B: Mint more Stablecoin (Depósito On-Chain RLUSD → Mint +CUSTOM_BRL)
 
 ### Requisição:
 
@@ -259,7 +259,7 @@ curl -X POST http://localhost:3000/api/v1/stablecoin/mint \
 
 ---
 
-## 🔥 Exemplo 3: Withdraw Stablecoin (Depósito On-Chain CUSTOM_BRL → Burn CUSTOM_BRL → Depósito On-Chain RLUSD to company)
+## 🔥 Exemplo 2C: Withdraw Stablecoin (Depósito On-Chain CUSTOM_BRL → Burn CUSTOM_BRL → Depósito On-Chain RLUSD to company)
 
 ### Requisição:
 
@@ -333,7 +333,7 @@ curl -X POST http://localhost:3000/api/v1/stablecoin/burn \
 
 ---
 
-## 🪙 Exemplo 4: Create new Stablecoin (Depósito Off-Chain PIX → Create Token: CUSTOM_BRL)
+## 🪙 Exemplo 3A: Create new Stablecoin (Depósito Off-Chain PIX → Create Token: CUSTOM_BRL)
 
 ### Requisição:
 
@@ -416,7 +416,7 @@ curl -X POST http://localhost:3000/api/v1/stablecoin \
 
 ---
 
-## 🪙 Exemplo 5: Mint more Stablecoin (Depósito Off-Chain PIX → Mint +CUSTOM_BRL)
+## 🪙 Exemplo 3B: Mint more Stablecoin (Depósito Off-Chain PIX → Mint +CUSTOM_BRL)
 
 ### Requisição:
 
@@ -493,7 +493,7 @@ curl -X POST http://localhost:3000/api/v1/stablecoin/mint \
 
 ---
 
-## 🔥 Exemplo 6: Withdraw Stablecoin (Depósito On-Chain CUSTOM_BRL → Burn CUSTOM_BRL → Depósito Off-Chain PIX to company)
+## 🔥 Exemplo 3C: Withdraw Stablecoin (Depósito On-Chain CUSTOM_BRL → Burn CUSTOM_BRL → Depósito Off-Chain PIX to company)
 
 ### Requisição:
 
